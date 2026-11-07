@@ -1,0 +1,55 @@
+{
+  "manifestVersion": 1,
+  "id": "bryanthaboi.weather-panel",
+  "name": "Weather Panel",
+  "author": "bryanthaboi",
+  "version": "1.0.0",
+  "api": ">=1.0.0 <2.0.0",
+  "app": ">=1.0.0 <2.0.0",
+  "runtime": "ts/1",
+  "entry": "scripts/main.ts",
+  "license": "MIT",
+  "permissions": [
+    {
+      "kind": "net",
+      "endpoints": [
+        {"scheme": "https", "host": "geocoding-api.open-meteo.com", "methods": ["GET"]},
+        {"scheme": "https", "host": "api.open-meteo.com", "methods": ["GET"]}
+      ],
+      "maxBytes": 65536,
+      "reason": "Look up your city and its current weather on open-meteo.com. Nothing else is contacted and nothing about your files is sent."
+    },
+    {"kind": "ui", "surfaces": ["panel", "toolbar"]}
+  ],
+  "contributes": {
+    "panels": [
+      {"id": "weather", "title": "Weather", "edge": "right", "presentation": "slideOut", "icon": "cloud.sun"}
+    ],
+    "toolbar": [
+      {"id": "weather", "title": "Weather", "command": "refresh-weather", "icon": "cloud.sun"}
+    ],
+    "commands": [
+      {"id": "refresh-weather", "title": "Refresh Weather", "handler": "refreshWeather", "category": "Weather"}
+    ],
+    "settingsPanes": [
+      {"id": "weather", "title": "Weather", "settings": ["city", "units"], "icon": "cloud.sun"}
+    ]
+  },
+  "hooks": [
+    {"name": "activate", "handler": "activate", "version": 1},
+    {"name": "command.run", "handler": "refreshWeather", "version": 1},
+    {"name": "settings.changed", "handler": "settingsChanged", "version": 1}
+  ],
+  "settings": [
+    {"key": "city", "label": "City", "type": "string", "default": "Austin", "maxLength": 80, "description": "City to show the weather for"},
+    {
+      "key": "units", "label": "Units", "type": "enum", "default": "fahrenheit",
+      "options": [
+        {"label": "Fahrenheit, mph", "value": "fahrenheit"},
+        {"label": "Celsius, km/h", "value": "celsius"}
+      ]
+    }
+  ],
+  "dependencies": [],
+  "conflicts": []
+}
