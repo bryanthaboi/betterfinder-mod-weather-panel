@@ -1,79 +1,5 @@
 declare module "betterfinder" {
   export interface ModContext { readonly modID: string; readonly generation: number; }
-  export namespace commands {
-    function run(commandId: string, args?: JSONValue): Promise<CommandResult | null>;
-    function setEnabled(commandId: string, enabled: boolean): Promise<void>;
-  }
-  export namespace credentials {
-    function list(): Promise<CredentialInfo[]>;
-    function request(name: string, destination: string): Promise<CredentialHandle | null>;
-  }
-  export namespace events {
-    function delay(ms: number): Promise<void>;
-    function supports(name: string, version: number): Promise<boolean>;
-  }
-  export namespace fs {
-    function list(directory: FileRef, limit: number, order: SortOrder, cursor?: string): Promise<DirectoryPage>;
-    function mkdir(directory: FileRef, name: string): Promise<FileRef>;
-    function readBytes(item: FileRef, offset: Int64String, length: number): Promise<BytesChunk>;
-    function readText(item: FileRef, maxBytes: number): Promise<string>;
-    function root(rootId: string): Promise<FileRef | null>;
-    function stat(item: FileRef): Promise<FileRef>;
-    function walk(directory: FileRef, maxDepth: number, limit: number, cursor?: string): Promise<DirectoryPage>;
-    function writeText(directory: FileRef, name: string, text: string, conflict: ConflictPolicy): Promise<FileRef>;
-  }
-  export namespace locations {
-    function current(): Promise<LocationRef>;
-    function open(location: string, path: string): Promise<void>;
-    function refresh(location: string): Promise<void>;
-  }
-  export namespace log {
-    function write(level: LogLevel, message: string, fields?: JSONValue): Promise<void>;
-  }
-  export namespace media {
-    function imageDimensions(items: FileRef[]): Promise<ColumnValue[]>;
-    function imageInfo(items: FileRef[]): Promise<ImageInfo[]>;
-  }
-  export namespace net {
-    function fetch(request: NetRequest): Promise<NetResponse>;
-  }
-  export namespace operations {
-    function cancel(operationId: string): Promise<boolean>;
-    function copy(items: FileRef[], destination: FileRef, conflict: ConflictPolicy): Promise<OperationTicket>;
-    function move(items: FileRef[], destination: FileRef, conflict: ConflictPolicy): Promise<OperationTicket>;
-    function rename(item: FileRef, newName: string): Promise<OperationTicket>;
-    function status(operationId: string): Promise<OperationStatus>;
-    function trash(items: FileRef[]): Promise<OperationTicket>;
-  }
-  export namespace preview {
-    function invalidate(provider: string): Promise<void>;
-    function refresh(provider: string, item: FileRef): Promise<void>;
-  }
-  export namespace process {
-    function run(executable: string, args: string[], cwd?: FileRef): Promise<ProcessResult>;
-  }
-  export namespace process.archive {
-    function create(items: FileRef[], destination: FileRef, name: string, format: ArchiveFormat): Promise<OperationTicket>;
-  }
-  export namespace process.git {
-    function status(root: FileRef): Promise<GitStatus>;
-  }
-  export namespace search {
-    function files(query: string, root: FileRef, limit: number, cursor?: string): Promise<SearchBatch>;
-  }
-  export namespace settings {
-    function get(key: string): Promise<JSONValue>;
-    function getAll(): Promise<JSONValue>;
-    function set(key: string, value: JSONValue): Promise<void>;
-  }
-  export namespace ui {
-    function notify(message: string, level: NotifyLevel): Promise<void>;
-    function pickDestination(prompt: string): Promise<FileRef | null>;
-    function setPanel(panelId: string, node: UINode): Promise<void>;
-    function setStatusText(itemId: string, text: string): Promise<void>;
-    function setToolbarItemState(itemId: string, enabled: boolean, title?: string): Promise<void>;
-  }
-  export type BetterFinderTypes = () => void;
   export type JSONValue = null | boolean | number | string | JSONValue[] | { [key: string]: JSONValue };
   /** Decimal-string encoding of a 64-bit integer (sizes, offsets). */
   export type Int64String = string;
@@ -106,7 +32,15 @@ declare module "betterfinder" {
   /** Queued operation state. */
   export type OperationState = "queued" | "running" | "done" | "failed" | "cancelled";
   /** Native control a UINode maps to. */
-  export type UINodeType = "vstack" | "hstack" | "text" | "markdown" | "button" | "list" | "progress" | "divider";
+  export type UINodeType = "vstack" | "hstack" | "text" | "markdown" | "button" | "list" | "progress" | "divider" | "textField" | "select" | "icon" | "spacer" | "card";
+  /** Theme-aware colour role. */
+  export type UIColor = "primary" | "secondary" | "accent" | "success" | "warning" | "danger";
+  /** Font weight. */
+  export type UIWeight = "regular" | "medium" | "semibold" | "bold";
+  /** Horizontal alignment. */
+  export type UIAlign = "leading" | "center" | "trailing";
+  /** Look of a text node. */
+  export type UITextStyle = "body" | "title" | "secondary" | "monospaced";
   /** Git working tree state of a path. */
   export type GitState = "modified" | "added" | "deleted" | "renamed" | "untracked" | "conflicted";
   /** HTTP method. */
@@ -150,6 +84,7 @@ declare module "betterfinder" {
     text?: string;
     number?: number;
     sortKey?: string;
+    label?: string;
   }
   /** Image header facts. */
   export interface ImageInfo {
@@ -163,6 +98,8 @@ declare module "betterfinder" {
     id: string;
     title: string;
     provider?: string;
+    /** The folder shown, from locations.current only. Its access follows the mod's grants: fs.write destination during a user gesture, otherwise fs.read/fs.write selection; with neither it is a reference only. */
+    folder?: FileRef;
   }
   /** Row of a list node. */
   export interface UIListItem {
@@ -177,7 +114,30 @@ declare module "betterfinder" {
     text?: string;
     /** Accessibility label. */
     label?: string;
+    /** Command run on press; for a textField, run on Return with args {id, value, fields}; for a select, run on change with the chosen item id as value; for a list, run on double-click with the row id as value. Buttons receive args {fields} with the panel's current text field and select values. */
     command?: string;
+    /** Look of a text node; body when omitted. */
+    style?: UITextStyle;
+    /** SF Symbol name drawn on a button, or shown by an icon node. */
+    icon?: string;
+    /** Colour of a text or icon node; for a tinted card, the tint. */
+    color?: UIColor;
+    /** Point size of a text or icon node, 8 to 96. */
+    size?: number;
+    /** Font weight of a text or icon node. */
+    weight?: UIWeight;
+    /** Alignment of a text node, or of the children of a vstack or card. */
+    align?: UIAlign;
+    /** Gap between the children of a stack or card, 0 to 64. */
+    spacing?: number;
+    /** Inset around the children of a stack or card, 0 to 64. */
+    padding?: number;
+    /** Fill a card with its colour instead of the neutral card background. */
+    tinted?: boolean;
+    /** Item id a select shows as chosen; the first item when omitted. */
+    selected?: string;
+    /** Placeholder of a textField; text is its initial value. */
+    placeholder?: string;
     value?: number;
     children?: UINode[];
     items?: UIListItem[];
@@ -376,13 +336,86 @@ declare module "betterfinder" {
     stdout: string;
     stderr: string;
   }
-  export const storage: {
-    get(key: string): Promise<JSONValue>;
-    set(key: string, value: JSONValue): Promise<void>;
-    delete(key: string): Promise<void>;
-    keys(): Promise<string[]>;
-  };
-  export type BetterFinderTypesEnd = void;
+  export namespace commands {
+    function run(commandId: string, args?: JSONValue): Promise<CommandResult | null>;
+    function setEnabled(commandId: string, enabled: boolean): Promise<void>;
+  }
+  export namespace credentials {
+    function list(): Promise<CredentialInfo[]>;
+    function request(name: string, destination: string): Promise<CredentialHandle | null>;
+  }
+  export namespace events {
+    function delay(ms: number): Promise<void>;
+    function supports(name: string, version: number): Promise<boolean>;
+  }
+  export namespace fs {
+    function list(directory: FileRef, limit: number, order: SortOrder, cursor?: string): Promise<DirectoryPage>;
+    function mkdir(directory: FileRef, name: string): Promise<FileRef>;
+    function readBytes(item: FileRef, offset: Int64String, length: number): Promise<BytesChunk>;
+    function readText(item: FileRef, maxBytes: number): Promise<string>;
+    function root(rootId: string): Promise<FileRef | null>;
+    function stat(item: FileRef): Promise<FileRef>;
+    function walk(directory: FileRef, maxDepth: number, limit: number, cursor?: string): Promise<DirectoryPage>;
+    function writeText(directory: FileRef, name: string, text: string, conflict: ConflictPolicy): Promise<FileRef>;
+  }
+  export namespace locations {
+    function current(): Promise<LocationRef>;
+    function open(location: string, path: string): Promise<void>;
+    function refresh(location: string): Promise<void>;
+  }
+  export namespace log {
+    function write(level: LogLevel, message: string, fields?: JSONValue): Promise<void>;
+  }
+  export namespace media {
+    function imageDimensions(items: FileRef[]): Promise<ColumnValue[]>;
+    function imageInfo(items: FileRef[]): Promise<ImageInfo[]>;
+  }
+  export namespace net {
+    function fetch(request: NetRequest): Promise<NetResponse>;
+  }
+  export namespace operations {
+    function cancel(operationId: string): Promise<boolean>;
+    function copy(items: FileRef[], destination: FileRef, conflict: ConflictPolicy): Promise<OperationTicket>;
+    function move(items: FileRef[], destination: FileRef, conflict: ConflictPolicy): Promise<OperationTicket>;
+    function rename(item: FileRef, newName: string): Promise<OperationTicket>;
+    function status(operationId: string): Promise<OperationStatus>;
+    function trash(items: FileRef[]): Promise<OperationTicket>;
+  }
+  export namespace preview {
+    function invalidate(provider: string): Promise<void>;
+    function refresh(provider: string, item: FileRef): Promise<void>;
+  }
+  export namespace process {
+    function run(executable: string, args: string[], cwd?: FileRef): Promise<ProcessResult>;
+  }
+  export namespace process.archive {
+    function create(items: FileRef[], destination: FileRef, name: string, format: ArchiveFormat): Promise<OperationTicket>;
+  }
+  export namespace process.git {
+    function status(root: FileRef): Promise<GitStatus>;
+  }
+  export namespace search {
+    function files(query: string, root: FileRef, limit: number, cursor?: string): Promise<SearchBatch>;
+  }
+  export namespace settings {
+    function get(key: string): Promise<JSONValue>;
+    function getAll(): Promise<JSONValue>;
+    function set(key: string, value: JSONValue): Promise<void>;
+  }
+  export namespace storage {
+    function remove(key: string): Promise<void>;
+    function get(key: string): Promise<JSONValue>;
+    function keys(): Promise<string[]>;
+    function set(key: string, value: JSONValue): Promise<void>;
+  }
+  export namespace ui {
+    function notify(message: string, level: NotifyLevel): Promise<void>;
+    function pickDestination(prompt: string): Promise<FileRef | null>;
+    function setPanel(panelId: string, node: UINode): Promise<void>;
+    function setStatusText(itemId: string, text: string): Promise<void>;
+    function setToolbarItemState(itemId: string, enabled: boolean, title?: string): Promise<void>;
+    function showPanel(panelId: string): Promise<void>;
+  }
   export type ActivateHandler = (context: HookContext, input: ActivateInput) => Promise<void>;
   export type ColumnValuesHandler = (context: HookContext, input: ColumnValuesInput) => Promise<ColumnValue[]>;
   export type CommandRunHandler = (context: HookContext, input: CommandRunInput) => Promise<CommandResult>;
